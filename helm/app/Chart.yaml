@@ -1,0 +1,9 @@
+apiVersion: v2
+name: demo-app
+description: FastAPI demo application Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: GetDark
+    url: https://github.com/GetDark
