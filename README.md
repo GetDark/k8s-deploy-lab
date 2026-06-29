@@ -1,84 +1,129 @@
+[English](#english) | [Русский](#русский)
+
+---
+
+<a name="english"></a>
 # k8s-deploy-lab
 
-Kubernetes deployment lab: raw manifests + Helm chart + Docker Swarm stack for a FastAPI app with Prometheus metrics, liveness/readiness probes, rolling updates, and resource limits.
+A demo FastAPI application with three deployment targets: raw Kubernetes manifests, Helm chart, and Docker Swarm. Prometheus metrics included out of the box.
 
-## Structure
+## Application
 
-```
-k8s-deploy-lab/
-├── app/                    # FastAPI app with /health, /ready, /metrics
-│   ├── main.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── manifests/              # Raw kubectl manifests
-│   ├── namespace.yaml
-│   ├── configmap.yaml
-│   ├── secret.yaml         # ⚠ fill before applying
-│   ├── deployment.yaml     # 2 replicas, rolling update, resource limits
-│   ├── service.yaml        # ClusterIP
-│   └── ingress.yaml        # nginx ingress + cert-manager TLS
-├── helm/app/               # Helm chart (same stack, parametrized)
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   └── templates/
-└── swarm/
-    └── docker-stack.yml    # Docker Swarm overlay network
-```
+FastAPI app exposing:
 
-## Deploy with kubectl
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | App status |
+| `GET /health` | Health check |
+| `GET /ready` | Readiness check |
+| `GET /metrics` | Prometheus metrics (request count + latency histogram) |
+
+## Deployment Options
+
+### Kubernetes — raw manifests
 
 ```bash
-# Apply in order
 kubectl apply -f manifests/namespace.yaml
-kubectl apply -f manifests/configmap.yaml
-kubectl apply -f manifests/secret.yaml
-kubectl apply -f manifests/deployment.yaml
-kubectl apply -f manifests/service.yaml
-kubectl apply -f manifests/ingress.yaml
-
-# Check rollout
-kubectl rollout status deployment/demo-app -n demo-app
-
-# Rollback
-kubectl rollout undo deployment/demo-app -n demo-app
+kubectl apply -f manifests/
 ```
 
-## Deploy with Helm
+### Kubernetes — Helm
 
 ```bash
-helm upgrade --install demo-app ./helm/app \
-  --namespace demo-app \
-  --create-namespace \
-  --set ingress.host=app.yourdomain.com \
-  --set secrets.DATABASE_URL="postgresql://..." \
-  --set secrets.SECRET_KEY="$(openssl rand -hex 32)"
+helm install demo-app helm/app/ -f helm/app/values.yaml
 ```
 
-## Deploy with Docker Swarm
+### Docker Swarm
 
 ```bash
-# Init swarm (once)
-docker swarm init
-
-# Create secrets
-echo "postgresql://..." | docker secret create database_url -
-echo "$(openssl rand -hex 32)" | docker secret create secret_key -
-
-# Deploy stack
 docker stack deploy -c swarm/docker-stack.yml demo
-
-# Check services
-docker service ls
-docker service ps demo_app
 ```
 
-## Key concepts demonstrated
+### Local
 
-- **Namespace isolation** — dedicated namespace per app
-- **ConfigMap / Secret separation** — non-sensitive vs sensitive config
-- **Rolling update** — zero-downtime deploys (`maxUnavailable: 0`)
-- **Liveness + readiness probes** — K8s knows when to send traffic
-- **Resource requests/limits** — predictable scheduling
-- **Prometheus annotations** — auto-scraping via `prometheus.io/*`
-- **Helm templating** — same manifests, any environment
-- **Swarm overlay network** — multi-host container networking
+```bash
+cd app
+docker build -t demo-app .
+docker run -p 8000:8000 demo-app
+```
+
+## Manifests
+
+| File | Description |
+|------|-------------|
+| `namespace.yaml` | Kubernetes namespace |
+| `deployment.yaml` | App Deployment |
+| `service.yaml` | ClusterIP Service |
+| `ingress.yaml` | Ingress |
+| `configmap.yaml` | ConfigMap |
+| `secret.yaml` | Secret template |
+
+## Tech Stack
+
+- Python 3 / FastAPI
+- prometheus-client
+- Kubernetes / Helm / Docker Swarm
+
+---
+
+<a name="русский"></a>
+# k8s-deploy-lab
+
+Демо FastAPI-приложение с тремя вариантами деплоя: raw Kubernetes-манифесты, Helm chart и Docker Swarm. Метрики Prometheus включены из коробки.
+
+## Приложение
+
+FastAPI-приложение с эндпоинтами:
+
+| Эндпоинт | Описание |
+|----------|----------|
+| `GET /` | Статус приложения |
+| `GET /health` | Проверка здоровья |
+| `GET /ready` | Проверка готовности |
+| `GET /metrics` | Метрики Prometheus (счётчик запросов + гистограмма задержек) |
+
+## Варианты деплоя
+
+### Kubernetes — raw манифесты
+
+```bash
+kubectl apply -f manifests/namespace.yaml
+kubectl apply -f manifests/
+```
+
+### Kubernetes — Helm
+
+```bash
+helm install demo-app helm/app/ -f helm/app/values.yaml
+```
+
+### Docker Swarm
+
+```bash
+docker stack deploy -c swarm/docker-stack.yml demo
+```
+
+### Локально
+
+```bash
+cd app
+docker build -t demo-app .
+docker run -p 8000:8000 demo-app
+```
+
+## Манифесты
+
+| Файл | Описание |
+|------|----------|
+| `namespace.yaml` | Kubernetes namespace |
+| `deployment.yaml` | Deployment приложения |
+| `service.yaml` | ClusterIP Service |
+| `ingress.yaml` | Ingress |
+| `configmap.yaml` | ConfigMap |
+| `secret.yaml` | Шаблон секретов |
+
+## Технологический стек
+
+- Python 3 / FastAPI
+- prometheus-client
+- Kubernetes / Helm / Docker Swarm
